@@ -11,6 +11,7 @@ const https = require('https');
 
 let file, text;
 
+/*
 //
 // Inject "babel-plugin-relay"
 // -----------------------------------------------------------------------------
@@ -28,6 +29,7 @@ if (!text.includes('babel-plugin-relay')) {
   }
 }
 
+ */
 //
 // Inject "babel-plugin-styled-components"
 // -----------------------------------------------------------------------------
@@ -61,7 +63,7 @@ if (!text.includes('babel-plugin-transform-export-extensions')) {
     throw new Error(`Failed to inject babel-plugin-transform-export-extensions in ${file}.`); // prettier-ignore
   }
 }
-
+/*
 //
 // Download the GraphQL schema
 // -----------------------------------------------------------------------------
@@ -75,3 +77,4 @@ if (process.argv.includes('--download-schema')) {
     }
   });
 }
+*/
