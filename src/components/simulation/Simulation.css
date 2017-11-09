@@ -1,0 +1,19 @@
+.root {
+  border-width: 2px;
+  border-style: solid;
+  border-color: rgb(231, 18, 25);
+  padding: 0 20px;
+  margin: 0 auto;
+  width: 80%;
+  height: 80%;
+
+}
+
+.svg {
+  background-color: 'black';
+  color: #777;
+  font-size: 24px;
+  font-family: helvetica, arial, sans-serif;
+  font-weight: 600;
+  width: 100%;
+}
