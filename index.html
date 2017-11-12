@@ -1,14 +1,43 @@
 <html>
 
 <body>
-  <link rel="stylesheet" href=" index.css"/>
-  <script src="anime.min.js"></script>
+  <link rel="stylesheet" href=" index.css" />
+  <script src="./dist/bundle.js"></script>
   <div class="container">
     <div class="top-bar">
     </div>
     <div class='sim-frame'>
       <svg class="sim">
-
+        <g id="framebox">
+          <rect class="framebox">
+        </g>
+        <g id="sender" transform="translate(100,250)">
+          <circle r="80"></circle>
+          <g id='sender-framegroup' transform='translate(-75,-15)'>
+            <g transform="translate(0)" class='sframe'>
+              <rect class="framebox">
+            </g>
+            <g transform="translate(30)" class='sframe'>
+              <rect class="framebox">
+            </g>
+            <g transform="translate(60)" class='sframe'>
+              <rect class="framebox">
+            </g>
+            <g transform="translate(90)" class='sframe'>
+              <rect class="framebox">
+            </g>
+            <g transform="translate(120)" class='sframe'style="red">
+              <rect class="framebox">
+            </g>
+          </g>
+        </g>
+        <g id="receiver" transform="translate(500,250)">
+          <circle r="80"></circle>
+          <g id='receiver-framegroup' transform='translate(-75,-15)'>
+            <g transform="translate(60)" class='sframe'>
+              <rect class="framebox">
+            </g>
+        </g>
     </svg>
     </div>
   </div>
