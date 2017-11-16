@@ -7,9 +7,9 @@
     <div class="top-bar">
     </div>
     <div class='sim-frame'>
-      <svg class="sim">
-        <g id="framebox">
-          <rect class="framebox">
+      <svg class="sim" id='sim'>
+        <g id="sender-framebox">
+          <!--The js-generated sender frames go here -->
         </g>
         <g id="sender" transform="translate(100,250)">
           <circle r="80"></circle>
@@ -31,7 +31,7 @@
             </g>
           </g>
         </g>
-        <g id="receiver" transform="translate(500,250)">
+        <g id="receiver" transform="translate(900,250)">
           <circle r="80"></circle>
           <g id='receiver-framegroup' transform='translate(-75,-15)'>
             <g transform="translate(60)" class='sframe'>
