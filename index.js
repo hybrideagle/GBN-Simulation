@@ -6,10 +6,10 @@ background.rect(0, 0, '100%', '100%').attr({'fill': 'black'})
 var paper = Raphael('0', '0', '100%', '100%')
 
 var conf = {
-  rtt: 1000,
-  jitter: 500,
-  sendWait: 500,
-  timeout: 1000
+  rtt: 400,
+  jitter: 0,
+  sendWait: 100,
+  timeout: 600
 }
 
 function log (s) {
@@ -24,17 +24,17 @@ function send (x1, y1, x2, y2, seqno, color, callback) {
   let r = paper.rect(x1, y1, 40, 40).attr({fill: color})
   let c = color === 'blue' ? 'red' : 'blue'
   c = 'white'
-  let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c})
+  let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
   log(t)
   let time = getTime()
   r.animate({
     x: x2,
     y: y2
-  }, time, 'linear', () => { callback() })
+  }, time, 'easeInQuad', () => { callback() })
   t.animate({
     x: x2 + 20,
     y: y2 + 20
-  }, time, 'linear', () => { t.remove(); r.remove() })
+  }, time, 'easeInQuad ', () => { t.remove(); r.remove() })
 }
 
 class Frame {
@@ -107,12 +107,16 @@ class Sender {
     }
     this.draw()
     this.drawFrames()
-    window.setInterval(this.sendUnsent.bind(this), conf.sendWait)
+    let f = () => {
+      this.sendUnsent()
+      window.setTimeout(f, conf.sendWait)
+    }
+    window.setTimeout(f, conf.sendWait)
   }
   // this method is called every time an ACK is received
   handleACK (seqno) {
     log('receive ACK ' + seqno)
-    let pos = 0
+    let pos = -1
     // check the position of the ack'd packet
     for (let i = 0; i < this.windowSize; i++) {
       if (this.window[i] === seqno) {
@@ -121,16 +125,18 @@ class Sender {
       }
     }
     // set everything before that to complete
-    for (let i = 0; i < pos; i++) {
+    for (let i = 0; i <= pos; i++) {
       this.status[i] = 'complete'
     }
-
-    while (this.status[0] === 'complete') {
-      this.status.shift()
-      this.window.shift()
-      this.status.push('unsent')
-      this.window.push((this.window[this.window.length - 1] + 1) % this.maxSeqNo)
-    }
+    window.setTimeout(() => {
+      while (this.status[0] === 'complete') {
+        this.status.shift()
+        this.window.shift()
+        this.status.push('unsent')
+        this.window.push((this.window[this.window.length - 1] + 1) % this.maxSeqNo)
+        this.drawFrames()
+      }
+    }, 500)
     this.drawFrames()
   }
   drawFrames () {
@@ -161,6 +167,7 @@ class Sender {
         return
       }
     }
+    this.drawFrames()
   }
   // slide the window to the right
   slideWindow () {
@@ -168,6 +175,7 @@ class Sender {
     this.window.shift()
     this.status.push('unsent')
     this.status.shift()
+    this.drawFrames()
   }
   draw () {
     background.circle(this.x, this.y, 140).attr({
@@ -176,6 +184,7 @@ class Sender {
     for (let i = 0; i < this.windowSize; i++) {
       background.rect(this.x + 40 * (i - this.windowSize / 2), this.y - 10, 40, 40)
     }
+    this.drawFrames()
   }
   sendPacket (seqno) {
     log('send packet ' + seqno)
@@ -230,8 +239,8 @@ var receiver = new Receiver(10, 150 + packetDistance, 400, packetDistance)
 
 window.onload = function () {
   var gui = new dat.GUI()
-  gui.add(conf, 'rtt', 10, 1000).step(50)
-  gui.add(conf, 'jitter', 10, 1000).step(50)
-  gui.add(conf, 'sendWait', 10, 2000).step(50)
+  gui.add(conf, 'rtt', 10, 10000).step(50)
+  gui.add(conf, 'jitter', 10, 10000).step(50)
+  gui.add(conf, 'sendWait', 10, 10000).step(50)
   gui.add(conf, 'timeout', 10, 10000).step(50)
 }
