@@ -12,6 +12,11 @@ var conf = {
   timeout: 600
 }
 
+var stats = {
+  transferred: 0,
+  dropped: 0
+}
+
 function log (s) {
   // console.log(s)
 }
@@ -212,12 +217,15 @@ class Receiver {
     log('receive ACK ' + seqno)
     if (seqno <= this.seqno) {
       this.sendACK(seqno)
+      stats.dropped++
     }
     if (seqno === this.seqno) {
       this.seqno = (this.seqno + 1) % this.maxSeqNo
       this.frame.slideLeft(true)
       this.frame = new Frame(this.seqno, this.x - 20, this.y - 20)
       this.frame.setStatus('waiting')
+      stats.transferred++
+      stats.dropped--
     }
   }
   sendACK (seqno) {
@@ -243,4 +251,7 @@ window.onload = function () {
   gui.add(conf, 'jitter', 10, 10000).step(50)
   gui.add(conf, 'sendWait', 10, 10000).step(50)
   gui.add(conf, 'timeout', 10, 10000).step(50)
+  var statsPane = new dat.GUI()
+  statsPane.add(stats, 'transferred').listen()
+  statsPane.add(stats, 'dropped').listen()
 }
