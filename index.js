@@ -6,10 +6,10 @@ background.rect(0, 0, '100%', '100%').attr({'fill': 'black'})
 var paper = Raphael('0', '0', '100%', '100%')
 
 var conf = {
-  rtt: 400,
+  rtt: 7000,
   jitter: 0,
-  sendWait: 100,
-  timeout: 600
+  sendWait: 6000,
+  timeout: 5000
 }
 
 var stats = {
