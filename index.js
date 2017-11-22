@@ -9,11 +9,13 @@ var conf = {
   rtt: 7000,
   jitter: 0,
   sendWait: 6000,
-  timeout: 5000
+  timeout: 5000,
+  dropRate: 0.5
 }
 
 var stats = {
-  transferred: 0,
+  sent: 0,
+  received: 0,
   dropped: 0
 }
 
@@ -29,17 +31,37 @@ function send (x1, y1, x2, y2, seqno, color, callback) {
   let r = paper.rect(x1, y1, 40, 40).attr({fill: color})
   let c = color === 'blue' ? 'red' : 'blue'
   c = 'white'
-  let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
-  log(t)
-  let time = getTime()
-  r.animate({
-    x: x2,
-    y: y2
-  }, time, 'easeInQuad', () => { callback() })
-  t.animate({
-    x: x2 + 20,
-    y: y2 + 20
-  }, time, 'easeInQuad ', () => { t.remove(); r.remove() })
+
+  if (Math.random() < conf.dropRate) {
+    let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
+    log(t)
+    let time = getTime()
+    r.animate({
+      x: x2,
+      y: y2,
+    }, time, 'easeInQuad', () => { callback() })
+    t.animate({
+      x: x2 + 20,
+      y: y2 + 20,
+    }, time, 'easeInQuad ', () => { t.remove(); r.remove() })
+  } else {
+    let x2n = Math.abs(x1 - x2) / 2 + (x1 < x2 ? x1 : x2)
+    let time = getTime() / 2
+    let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
+    log(t)
+    r.animate({
+      x: x2n,
+      y: y2,
+      fill: 'black',
+      stroke: 'black'
+    }, time, 'easeInQuad', () => { callback() })
+    t.animate({
+      x: x2n + 20,
+      y: y2 + 20,
+      fill: 'red',
+      stroke: 'red'
+    }, time, 'easeInQuad ', () => { t.remove(); r.remove() })
+  }
 }
 
 class Frame {
@@ -193,6 +215,7 @@ class Sender {
   }
   sendPacket (seqno) {
     log('send packet ' + seqno)
+    stats.sent++
     send(this.x + 50, this.y - 100, this.x + this.packetDistance - 150, this.y - 100, seqno, 'red', () => receiver.handlePacket(seqno))
     for (let i = 0; i < this.windowSize; i++) {
       if (this.window[i] === seqno) {
@@ -217,15 +240,15 @@ class Receiver {
     log('receive ACK ' + seqno)
     if (seqno <= this.seqno) {
       this.sendACK(seqno)
-      stats.dropped++
     }
     if (seqno === this.seqno) {
       this.seqno = (this.seqno + 1) % this.maxSeqNo
       this.frame.slideLeft(true)
       this.frame = new Frame(this.seqno, this.x - 20, this.y - 20)
       this.frame.setStatus('waiting')
-      stats.transferred++
-      stats.dropped--
+      stats.received++
+    } else {
+      stats.dropped++
     }
   }
   sendACK (seqno) {
@@ -252,6 +275,8 @@ window.onload = function () {
   gui.add(conf, 'sendWait', 10, 10000).step(50)
   gui.add(conf, 'timeout', 10, 10000).step(50)
   var statsPane = new dat.GUI()
-  statsPane.add(stats, 'transferred').listen()
+
+  statsPane.add(stats, 'sent').listen()
+  statsPane.add(stats, 'received').listen()
   statsPane.add(stats, 'dropped').listen()
 }

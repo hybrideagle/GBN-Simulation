@@ -116,13 +116,15 @@ background.rect(0, 0, '100%', '100%').attr({
 });
 var paper = (0, _raphaelMin.default)('0', '0', '100%', '100%');
 var conf = {
-  rtt: 400,
+  rtt: 7000,
   jitter: 0,
-  sendWait: 100,
-  timeout: 600
+  sendWait: 6000,
+  timeout: 5000,
+  dropRate: 0.5
 };
 var stats = {
-  transferred: 0,
+  sent: 0,
+  received: 0,
   dropped: 0
 };
 
@@ -139,26 +141,60 @@ function send(x1, y1, x2, y2, seqno, color, callback) {
   });
   var c = color === 'blue' ? 'red' : 'blue';
   c = 'white';
-  var t = paper.text(x1 + 20, y1 + 20, seqno).attr({
-    fill: c,
-    stroke: c,
-    'font-size': '100%'
-  });
-  log(t);
-  var time = getTime();
-  r.animate({
-    x: x2,
-    y: y2
-  }, time, 'easeInQuad', function () {
-    callback();
-  });
-  t.animate({
-    x: x2 + 20,
-    y: y2 + 20
-  }, time, 'easeInQuad ', function () {
-    t.remove();
-    r.remove();
-  });
+
+  if (Math.random() < conf.dropRate) {
+    var t = paper.text(x1 + 20, y1 + 20, seqno).attr({
+      fill: c,
+      stroke: c,
+      'font-size': '100%'
+    });
+    log(t);
+    var time = getTime();
+    r.animate({
+      x: x2,
+      y: y2
+    }, time, 'easeInQuad', function () {
+      callback();
+    });
+    t.animate({
+      x: x2 + 20,
+      y: y2 + 20
+    }, time, 'easeInQuad ', function () {
+      t.remove();
+      r.remove();
+    });
+  } else {
+    var x2n = Math.abs(x1 - x2) / 2 + (x1 < x2 ? x1 : x2);
+
+    var _time = getTime() / 2;
+
+    var _t = paper.text(x1 + 20, y1 + 20, seqno).attr({
+      fill: c,
+      stroke: c,
+      'font-size': '100%'
+    });
+
+    log(_t);
+    r.animate({
+      x: x2n,
+      y: y2,
+      fill: 'black',
+      stroke: 'black'
+    }, _time, 'easeInQuad', function () {
+      callback();
+    });
+
+    _t.animate({
+      x: x2n + 20,
+      y: y2 + 20,
+      fill: 'red',
+      stroke: 'red'
+    }, _time, 'easeInQuad ', function () {
+      _t.remove();
+
+      r.remove();
+    });
+  }
 }
 
 var Frame =
@@ -409,6 +445,7 @@ function () {
     key: "sendPacket",
     value: function sendPacket(seqno) {
       log('send packet ' + seqno);
+      stats.sent++;
       send(this.x + 50, this.y - 100, this.x + this.packetDistance - 150, this.y - 100, seqno, 'red', function () {
         return receiver.handlePacket(seqno);
       });
@@ -450,7 +487,6 @@ function () {
 
       if (seqno <= this.seqno) {
         this.sendACK(seqno);
-        stats.dropped++;
       }
 
       if (seqno === this.seqno) {
@@ -458,8 +494,9 @@ function () {
         this.frame.slideLeft(true);
         this.frame = new Frame(this.seqno, this.x - 20, this.y - 20);
         this.frame.setStatus('waiting');
-        stats.transferred++;
-        stats.dropped--;
+        stats.received++;
+      } else {
+        stats.dropped++;
       }
     }
   }, {
@@ -496,7 +533,8 @@ window.onload = function () {
   gui.add(conf, 'sendWait', 10, 10000).step(50);
   gui.add(conf, 'timeout', 10, 10000).step(50);
   var statsPane = new _datGuiMin.default.GUI();
-  statsPane.add(stats, 'transferred').listen();
+  statsPane.add(stats, 'sent').listen();
+  statsPane.add(stats, 'received').listen();
   statsPane.add(stats, 'dropped').listen();
 };
 
