@@ -1,22 +1,27 @@
 import Raphael from './raphael.min.js'
 import dat from './dat.gui.min.js'
-
+import loadObj from './loadObj.js'
 var background = Raphael('0', '0', '100%', '100%')
 background.rect(0, 0, '100%', '100%').attr({'fill': 'black'})
 var paper = Raphael('0', '0', '100%', '100%')
 
 var conf = {
-  rtt: 7000,
+  rtt: 1500,
   jitter: 0,
-  sendWait: 6000,
-  timeout: 5000,
-  dropRate: 0.5
+  sendWait: 850,
+  timeout: 1850,
+  dropRate: 0
 }
 
 var stats = {
   sent: 0,
   received: 0,
   dropped: 0
+}
+
+var rates = {
+  dropRate: 0.0,
+  transmitRate: 0.0
 }
 
 function log (s) {
@@ -32,19 +37,19 @@ function send (x1, y1, x2, y2, seqno, color, callback) {
   let c = color === 'blue' ? 'red' : 'blue'
   c = 'white'
 
-  if (Math.random() < conf.dropRate) {
+  if (Math.random() > conf.dropRate) {
     let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
     log(t)
     let time = getTime()
     r.animate({
       x: x2,
-      y: y2,
+      y: y2
     }, time, 'easeInQuad', () => { callback() })
     t.animate({
       x: x2 + 20,
-      y: y2 + 20,
+      y: y2 + 20
     }, time, 'easeInQuad ', () => { t.remove(); r.remove() })
-  } else {
+  } else { // dropped packet
     let x2n = Math.abs(x1 - x2) / 2 + (x1 < x2 ? x1 : x2)
     let time = getTime() / 2
     let t = paper.text(x1 + 20, y1 + 20, seqno).attr({fill: c, stroke: c, 'font-size': '100%'})
@@ -54,7 +59,7 @@ function send (x1, y1, x2, y2, seqno, color, callback) {
       y: y2,
       fill: 'black',
       stroke: 'black'
-    }, time, 'easeInQuad', () => { callback() })
+    }, time, 'easeInQuad')
     t.animate({
       x: x2n + 20,
       y: y2 + 20,
@@ -146,7 +151,7 @@ class Sender {
     let pos = -1
     // check the position of the ack'd packet
     for (let i = 0; i < this.windowSize; i++) {
-      if (this.window[i] === seqno) {
+      if (this.window[i] === (seqno - 1)) {
         pos = i
         break
       }
@@ -188,9 +193,13 @@ class Sender {
   }
   timeout (seqno) {
     for (let i = 0; i < this.windowSize; i++) {
-      if (this.window[i] === seqno && this.status[i] === 'waiting') {
+      if (this.window[i] !== seqno) {
+        continue
+      }
+      if (this.status[i] === 'waiting') {
         this.status[i] = 'unsent'
         window.setTimeout(() => this.timeout(seqno), conf.timeout)
+        this.drawFrames()
         return
       }
     }
@@ -212,6 +221,9 @@ class Sender {
       background.rect(this.x + 40 * (i - this.windowSize / 2), this.y - 10, 40, 40)
     }
     this.drawFrames()
+    let d = `M ${this.x - 40} ${this.y - 50}
+    l 10 20 l `
+    this.slideArrow = paper.path(d)
   }
   sendPacket (seqno) {
     log('send packet ' + seqno)
@@ -238,9 +250,7 @@ class Receiver {
   }
   handlePacket (seqno) {
     log('receive ACK ' + seqno)
-    if (seqno <= this.seqno) {
-      this.sendACK(seqno)
-    }
+    this.sendACK(this.seqno)
     if (seqno === this.seqno) {
       this.seqno = (this.seqno + 1) % this.maxSeqNo
       this.frame.slideLeft(true)
@@ -257,7 +267,8 @@ class Receiver {
   }
   draw () {
     background.circle(this.x, this.y, 140).attr({
-      fill: 'yellow'
+      fill: 'yellow',
+      stroke: 'green'
     })
     background.rect(this.x - 20, this.y - 20, 40, 40)
     this.frame = new Frame(0, this.x - 20, this.y - 20)
@@ -265,18 +276,27 @@ class Receiver {
   }
 }
 var packetDistance = 1000
-var sender = new Sender(5, 10, 150, 400, packetDistance)
-var receiver = new Receiver(10, 150 + packetDistance, 400, packetDistance)
-
+var sender = new Sender(5, 12, 150, 400, packetDistance)
+var receiver = new Receiver(12, 150 + packetDistance, 400, packetDistance)
+conf = loadObj['remembered']['stresstest']['0']
 window.onload = function () {
-  var gui = new dat.GUI()
+  var gui = new dat.GUI(loadObj)
   gui.add(conf, 'rtt', 10, 10000).step(50)
   gui.add(conf, 'jitter', 10, 10000).step(50)
   gui.add(conf, 'sendWait', 10, 10000).step(50)
   gui.add(conf, 'timeout', 10, 10000).step(50)
+  gui.add(conf, 'dropRate', 0, 1).step(0.01)
+  gui.remember(conf)
   var statsPane = new dat.GUI()
-
+  window.setInterval(() => {
+    rates.dropRate = stats.dropped / stats.sent
+    rates.transmitRate = stats.received / stats.sent
+  }, 500)
   statsPane.add(stats, 'sent').listen()
   statsPane.add(stats, 'received').listen()
   statsPane.add(stats, 'dropped').listen()
+  // statsPane.remember(stats)
+  var ratesPane = new dat.GUI()
+  ratesPane.add(rates, 'transmitRate').step(0.01).listen()
+  ratesPane.add(rates, 'dropRate').step(0.01).listen()
 }

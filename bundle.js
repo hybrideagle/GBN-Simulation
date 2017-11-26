@@ -102,6 +102,8 @@ var _raphaelMin = _interopRequireDefault(__webpack_require__(2));
 
 var _datGuiMin = _interopRequireDefault(__webpack_require__(3));
 
+var _loadObj = _interopRequireDefault(__webpack_require__(4));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -116,16 +118,20 @@ background.rect(0, 0, '100%', '100%').attr({
 });
 var paper = (0, _raphaelMin.default)('0', '0', '100%', '100%');
 var conf = {
-  rtt: 7000,
+  rtt: 1500,
   jitter: 0,
-  sendWait: 6000,
-  timeout: 5000,
-  dropRate: 0.5
+  sendWait: 850,
+  timeout: 1850,
+  dropRate: 0
 };
 var stats = {
   sent: 0,
   received: 0,
   dropped: 0
+};
+var rates = {
+  dropRate: 0.0,
+  transmitRate: 0.0
 };
 
 function log(s) {// console.log(s)
@@ -142,7 +148,7 @@ function send(x1, y1, x2, y2, seqno, color, callback) {
   var c = color === 'blue' ? 'red' : 'blue';
   c = 'white';
 
-  if (Math.random() < conf.dropRate) {
+  if (Math.random() > conf.dropRate) {
     var t = paper.text(x1 + 20, y1 + 20, seqno).attr({
       fill: c,
       stroke: c,
@@ -164,6 +170,7 @@ function send(x1, y1, x2, y2, seqno, color, callback) {
       r.remove();
     });
   } else {
+    // dropped packet
     var x2n = Math.abs(x1 - x2) / 2 + (x1 < x2 ? x1 : x2);
 
     var _time = getTime() / 2;
@@ -180,9 +187,7 @@ function send(x1, y1, x2, y2, seqno, color, callback) {
       y: y2,
       fill: 'black',
       stroke: 'black'
-    }, _time, 'easeInQuad', function () {
-      callback();
-    });
+    }, _time, 'easeInQuad');
 
     _t.animate({
       x: x2n + 20,
@@ -336,7 +341,7 @@ function () {
       var pos = -1; // check the position of the ack'd packet
 
       for (var i = 0; i < this.windowSize; i++) {
-        if (this.window[i] === seqno) {
+        if (this.window[i] === seqno - 1) {
           pos = i;
           break;
         }
@@ -407,11 +412,16 @@ function () {
       var _this4 = this;
 
       for (var i = 0; i < this.windowSize; i++) {
-        if (this.window[i] === seqno && this.status[i] === 'waiting') {
+        if (this.window[i] !== seqno) {
+          continue;
+        }
+
+        if (this.status[i] === 'waiting') {
           this.status[i] = 'unsent';
           window.setTimeout(function () {
             return _this4.timeout(seqno);
           }, conf.timeout);
+          this.drawFrames();
           return;
         }
       }
@@ -440,6 +450,8 @@ function () {
       }
 
       this.drawFrames();
+      var d = "M ".concat(this.x - 40, " ").concat(this.y - 50, "\n    l 10 20 l ");
+      this.slideArrow = paper.path(d);
     }
   }, {
     key: "sendPacket",
@@ -484,10 +496,7 @@ function () {
     key: "handlePacket",
     value: function handlePacket(seqno) {
       log('receive ACK ' + seqno);
-
-      if (seqno <= this.seqno) {
-        this.sendACK(seqno);
-      }
+      this.sendACK(this.seqno);
 
       if (seqno === this.seqno) {
         this.seqno = (this.seqno + 1) % this.maxSeqNo;
@@ -511,7 +520,8 @@ function () {
     key: "draw",
     value: function draw() {
       background.circle(this.x, this.y, 140).attr({
-        fill: 'yellow'
+        fill: 'yellow',
+        stroke: 'green'
       });
       background.rect(this.x - 20, this.y - 20, 40, 40);
       this.frame = new Frame(0, this.x - 20, this.y - 20);
@@ -523,19 +533,30 @@ function () {
 }();
 
 var packetDistance = 1000;
-var sender = new Sender(5, 10, 150, 400, packetDistance);
-var receiver = new Receiver(10, 150 + packetDistance, 400, packetDistance);
+var sender = new Sender(5, 12, 150, 400, packetDistance);
+var receiver = new Receiver(12, 150 + packetDistance, 400, packetDistance);
+conf = _loadObj.default['remembered']['stresstest']['0'];
 
 window.onload = function () {
-  var gui = new _datGuiMin.default.GUI();
+  var gui = new _datGuiMin.default.GUI(_loadObj.default);
   gui.add(conf, 'rtt', 10, 10000).step(50);
   gui.add(conf, 'jitter', 10, 10000).step(50);
   gui.add(conf, 'sendWait', 10, 10000).step(50);
   gui.add(conf, 'timeout', 10, 10000).step(50);
+  gui.add(conf, 'dropRate', 0, 1).step(0.01);
+  gui.remember(conf);
   var statsPane = new _datGuiMin.default.GUI();
+  window.setInterval(function () {
+    rates.dropRate = stats.dropped / stats.sent;
+    rates.transmitRate = stats.received / stats.sent;
+  }, 500);
   statsPane.add(stats, 'sent').listen();
   statsPane.add(stats, 'received').listen();
-  statsPane.add(stats, 'dropped').listen();
+  statsPane.add(stats, 'dropped').listen(); // statsPane.remember(stats)
+
+  var ratesPane = new _datGuiMin.default.GUI();
+  ratesPane.add(rates, 'transmitRate').step(0.01).listen();
+  ratesPane.add(rates, 'dropRate').step(0.01).listen();
 };
 
 /***/ }),
@@ -6728,6 +6749,56 @@ window.onload = function () {
   }]);
 });
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)(module)))
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var _default = {
+  'preset': 'stresstest',
+  'closed': false,
+  'remembered': {
+    'Default': {
+      '0': {}
+    },
+    'Normal': {
+      '0': {
+        'rtt': 1300,
+        'jitter': 0,
+        'sendWait': 650,
+        'timeout': 2700,
+        'dropRate': 0.1
+      }
+    },
+    'Slow': {
+      '0': {
+        'rtt': 1500,
+        'jitter': 0,
+        'sendWait': 850,
+        'timeout': 1850,
+        'dropRate': 0.1
+      }
+    },
+    'stresstest': {
+      '0': {
+        'rtt': 400,
+        'jitter': 0,
+        'sendWait': 0,
+        'timeout': 1850,
+        'dropRate': 0
+      }
+    }
+  },
+  'folders': {}
+};
+exports.default = _default;
 
 /***/ })
 /******/ ]);
