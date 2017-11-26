@@ -198,7 +198,6 @@ class Sender {
       }
       if (this.status[i] === 'waiting') {
         this.status[i] = 'unsent'
-        window.setTimeout(() => this.timeout(seqno), conf.timeout)
         this.drawFrames()
         return
       }
